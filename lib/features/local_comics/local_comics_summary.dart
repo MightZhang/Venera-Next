@@ -1,3 +1,4 @@
+import 'package:uuid/uuid.dart';
 import 'package:venera_next/features/favorites/favorites_scope.dart';
 import 'package:venera_next/features/local_comics/import_export/comic_import_service.dart';
 import 'package:flutter/material.dart';
@@ -108,7 +109,7 @@ class _LocalComicsSummaryState extends State<LocalComicsSummary> {
                     scrollDirection: Axis.horizontal,
                     itemCount: local.length,
                     itemBuilder: (context, index) {
-                      final heroID = local[index].id.hashCode;
+                      final heroID = local[index].id.hashCode+Uuid().v4().hashCode;
                       return SimpleComicTile(
                         comic: local[index],
                         heroID: heroID,

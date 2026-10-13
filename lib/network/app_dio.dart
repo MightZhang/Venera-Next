@@ -125,9 +125,10 @@ class MyLogInterceptor extends Interceptor {
           "headers:\n${options.extra.containsKey("maskHeadersInLog") ? options.headers.map((key, value) => MapEntry(key, options.extra["maskHeadersInLog"].contains(key) ? headerMask : value)) : options.headers}\n"
           "data:\n${options.extra["maskDataInLog"] == true ? dataMask : options.data}",
     );
-    options.connectTimeout = const Duration(seconds: 15);
-    options.receiveTimeout = const Duration(seconds: 15);
-    options.sendTimeout = const Duration(seconds: 15);
+    const d = Duration(seconds: 25);
+    options.connectTimeout =  d ;
+    options.receiveTimeout =  d ;
+    options.sendTimeout =  d ;
     handler.next(options);
   }
 }

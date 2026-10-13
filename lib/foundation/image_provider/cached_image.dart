@@ -85,11 +85,23 @@ class CachedImageProvider extends BaseImageProvider<CachedImageProvider> {
     try {
       checkStop();
       if (url.startsWith("file://")) {
-        final file = createLocalFile(url.substring(7));
-        final bytes = await file.readAsBytes();
+        var path = url.substring(7);
+        // 修复 Windows 三斜杠路径: file:///D:/...
+        if (path.startsWith('/') && path.length > 2 && path[2] == ':') {
+          path = path.substring(1);
+        }
+        var file = File(path);
         checkStop();
-        return bytes;
+        return await file.readAsBytes();
       }
+      // await for (var progress in ImageDownloader.loadThumbnail(
+      //   url,
+      //   sourceKey,
+      //   cid,
+      // )) {
+      //   checkStop();
+      //   return bytes;
+      // }
       final bytes = await readImageStream(
         ImageDownloader.loadThumbnail(url, sourceKey, cid),
         cancelSignal: BaseImageProvider.cancelSignalOf(checkStop),

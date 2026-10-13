@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:venera_next/foundation/log.dart';
 import 'package:venera_next/foundation/operation_failure.dart';
 import 'dart:async';
 import 'dart:typed_data';
@@ -215,11 +218,11 @@ abstract class ImageDownloader {
 
     var configs = <String, dynamic>{};
     if (sourceKey != null) {
-      configs = await _resolveImageConfig(
-        () async =>
-            await _thumbnailLoadingConfigResolver?.call(sourceKey, url) ?? {},
-        scope,
-      );
+        configs = await _resolveImageConfig(
+          () async =>
+              await _thumbnailLoadingConfigResolver?.call(sourceKey, url) ?? {},
+          scope,
+        );
     }
     final owner = ImageLoadingConfigOwner(configs);
     Object? failure;
@@ -249,6 +252,7 @@ abstract class ImageDownloader {
             headers: Map<String, dynamic>.from(configs['headers']),
             method: configs['method'] ?? 'GET',
             responseType: ResponseType.stream,
+            receiveTimeout: const Duration(seconds: 30),  // 图片加载单独给更长超时
           ),
         ),
       );
@@ -398,6 +402,7 @@ abstract class ImageDownloader {
                 headers: configs['headers'],
                 method: configs['method'] ?? 'GET',
                 responseType: ResponseType.stream,
+                receiveTimeout: const Duration(seconds: 30),  // 图片加载单独给更长超时
               ),
             ),
           );

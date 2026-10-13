@@ -188,6 +188,10 @@ class ComicDetails with HistoryMixin {
 
   final List<Comment>? comments;
 
+  void addTag(String key, String value) {
+    tags.putIfAbsent(key, () => []).add(value);
+  }
+  
   static Map<String, List<String>> _generateMap(Map<dynamic, dynamic> map) {
     var res = <String, List<String>>{};
     map.forEach((key, value) {
