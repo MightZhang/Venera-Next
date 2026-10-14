@@ -242,12 +242,32 @@ class LocalStorageRelocation {
 bool _validPath(Object? value) =>
     value is String && value.isNotEmpty && !value.contains('\u0000');
 
+/// 校验是否是合法 android://primary: 格式的SAF路径
+bool isValidAndroidPrimaryUri(String uri) {
+  const prefix = 'android://primary:';
+  if (!uri.startsWith(prefix)) return false;
+
+  final relativePath = uri.substring(prefix.length);
+  // 相对路径不能为空
+  if (relativePath.isEmpty) return false;
+  // 禁止 .. 向上跳转，防目录穿越
+  if (relativePath.contains('..')) return false;
+  // 禁止开头带斜杠
+  if (relativePath.startsWith('/')) return false;
+  // 简单非法字符过滤
+  final invalidChars = RegExp(r'[<>:"|?*]');
+  if (invalidChars.hasMatch(relativePath)) return false;
+
+  return true;
+}
+
 bool _absolutePath(Object? value) {
   if (!_validPath(value)) return false;
   final path = value as String;
   final uri = Uri.tryParse(path);
   return p.isAbsolute(path) ||
-      (uri?.scheme == 'content' && uri!.host.isNotEmpty && uri.path.isNotEmpty);
+      (uri?.scheme == 'content' && uri!.host.isNotEmpty && uri.path.isNotEmpty)||
+      isValidAndroidPrimaryUri(path);
 }
 
 LocalStorageRelocationState _validateState(
