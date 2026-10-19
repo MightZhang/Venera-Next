@@ -274,8 +274,7 @@ bool _absolutePath(Object? value) {
   }
   final uri = Uri.tryParse(path);
   return p.isAbsolute(path) ||
-      (uri?.scheme == 'content' && uri!.host.isNotEmpty && uri.path.isNotEmpty)||
-      isValidAndroidPrimaryUri(path);
+      (uri?.scheme == 'content' && uri!.host.isNotEmpty && uri.path.isNotEmpty);
 }
 
 LocalStorageRelocationState _validateState(
