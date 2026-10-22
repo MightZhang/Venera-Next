@@ -318,9 +318,11 @@ class ArchiveDownloadTask extends DownloadTask {
       id: comic.id,
       title: title,
       subtitle: comic.subTitle ?? '',
-      tags: comic.tags.entries.expand((e) {
-        return e.value.map((v) => "${e.key}:$v");
-      }).toList(),
+      tags: [ 
+        'source:${source.name}',   // 新增：漫画源名称作为 tag
+        ...comic.tags.entries.expand((e) {
+          return e.value.map((v) => "${e.key}:$v");
+      })],
       directory: Directory(path!).name,
       chapters: null,
       cover: _findCover(),

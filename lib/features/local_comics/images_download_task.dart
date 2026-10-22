@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/services.dart';
 import 'package:venera_next/foundation/operation_failure.dart';
 import 'local_chapter_storage.dart';
@@ -409,7 +407,6 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
 
     await _storage.saveCurrentDownloadingTasks();
     if (!_isCurrentRun(generation)) return;
-    comic?.addTag('Tags', comic!.sourceKey );
 
     if (_cover == null) {
       _message = "Downloading cover...".tl;
@@ -646,9 +643,11 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
       id: comic!.id,
       title: title,
       subtitle: comic!.subTitle ?? '',
-      tags: comic!.tags.entries.expand((e) {
+      tags: [
+        'source:${source.name}',   // 新增：漫画源名称作为 tag
+        ...comic!.tags.entries.expand((e) {
         return e.value.map((v) => "${e.key}:$v");
-      }).toList(),
+      })],
       directory: Directory(path!).name,
       chapters: comic!.chapters,
       cover: File(_cover!.split("file://").last).name,
