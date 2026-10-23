@@ -319,7 +319,7 @@ class ArchiveDownloadTask extends DownloadTask {
       title: title,
       subtitle: comic.subTitle ?? '',
       tags: [ 
-        'source:${source.name}',   // 新增：漫画源名称作为 tag
+        'Source:${source.name}',   // 新增：漫画源名称作为 tag
         ...comic.tags.entries.expand((e) {
           return e.value.map((v) => "${e.key}:$v");
       })],
