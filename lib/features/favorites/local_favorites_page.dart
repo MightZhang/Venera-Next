@@ -126,20 +126,27 @@ class _LocalFavoritesPageState extends State<LocalFavoritesPage> {
   var searchResults = <FavoriteItem>[];
 
   void updateSearchResult() {
-    setState(() {
-      if (keyword.trim().isEmpty) {
-        searchResults = comics;
-      } else {
-        searchResults = [];
-        for (var comic in comics) {
-          if (matchKeyword(keyword, comic) ||
-              matchKeywordT(keyword, comic) ||
-              matchKeywordS(keyword, comic)) {
-            searchResults.add(comic);
-          }
+    setState(_refreshSearchResults);
+  }
+
+  void _refreshSearchResults() {
+    if (keyword.trim().isEmpty) {
+      searchResults = comics;
+    } else {
+      searchResults = [];
+      for (var comic in comics) {
+        if (matchKeyword(keyword, comic) ||
+            matchKeywordT(keyword, comic) ||
+            matchKeywordS(keyword, comic)) {
+          searchResults.add(comic);
         }
       }
-    });
+    }
+  }
+
+  void _replaceComics(List<FavoriteItem> value) {
+    comics = value;
+    if (searchMode) _refreshSearchResults();
   }
 
   void updateComics() {
@@ -154,11 +161,13 @@ class _LocalFavoritesPageState extends State<LocalFavoritesPage> {
           ? manager.totalComics
           : manager.folderComics(folder);
       if (!isAllFolder && !manager.existsFolder(folder)) {
-        comics = [];
+        _replaceComics([]);
       } else if (count < _asyncDataFetchLimit) {
-        comics = isAllFolder
-            ? manager.getAllComics()
-            : manager.getFolderComics(folder);
+        _replaceComics(
+          isAllFolder
+              ? manager.getAllComics()
+              : manager.getFolderComics(folder),
+        );
       } else {
         isLoading = true;
         final reading = isAllFolder
@@ -174,7 +183,7 @@ class _LocalFavoritesPageState extends State<LocalFavoritesPage> {
               }
               setState(() {
                 isLoading = false;
-                comics = value;
+                _replaceComics(value);
               });
             },
             onError: (Object error, StackTrace stack) {
@@ -425,6 +434,7 @@ class _LocalFavoritesPageState extends State<LocalFavoritesPage> {
     if (title == localAllFolderLabel) {
       title = "All".tl;
     }
+    final displayedComics = searchMode ? searchResults : filterComics(comics);
 
     Widget body = SmoothCustomScrollView(
       controller: scrollController,
@@ -862,9 +872,24 @@ class _LocalFavoritesPageState extends State<LocalFavoritesPage> {
               child: const Center(child: CircularProgressIndicator()),
             ),
           )
-        else
+        else ...[
+          if (!searchMode && displayedComics.length < comics.length)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Text(
+                  'Hidden by reading-status filter: @a comics'.tlParams({
+                    'a': comics.length - displayedComics.length,
+                  }),
+                ),
+              ),
+            ),
           SliverGridComics(
-            comics: searchMode ? searchResults : filterComics(comics),
+            comics: displayedComics,
+            showHiddenCount: true,
             selections: selectedComics,
             useFavoriteDisplaySettings: true,
             menuBuilder: (c) {
@@ -1021,6 +1046,7 @@ class _LocalFavoritesPageState extends State<LocalFavoritesPage> {
               });
             },
           ),
+        ],
       ],
     );
     body = AppScrollBar(

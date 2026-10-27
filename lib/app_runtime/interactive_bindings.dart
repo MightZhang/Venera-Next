@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:venera_next/foundation/event_subscription.dart';
 import 'package:venera_next/foundation/log.dart';
 import 'package:venera_next/foundation/window_placement_tracker.dart';
+import 'package:venera_next/foundation/window_hotkey_controller.dart';
 
 /// Platform listeners and heartbeat belong to the mounted interactive app.
 class InteractiveBindings {
@@ -12,7 +13,10 @@ class InteractiveBindings {
     required this.shares,
     required this.heartbeat,
     this.closeHeartbeat,
+    this.startDownloads,
+    this.closeDownloads,
     this.placement,
+    this.windowHotkey,
     this.onError = _logError,
   });
 
@@ -22,7 +26,10 @@ class InteractiveBindings {
   final EventSubscription<Object?> Function() shares;
   final Future<void> Function() heartbeat;
   final Future<void> Function()? closeHeartbeat;
+  final void Function()? startDownloads;
+  final Future<void> Function()? closeDownloads;
   final WindowPlacementTracker? placement;
+  final WindowHotkeyController? windowHotkey;
   final void Function(Object error, StackTrace stack) onError;
   EventSubscription<Uri>? _links;
   EventSubscription<Object?>? _shares;
@@ -57,12 +64,14 @@ class InteractiveBindings {
     try {
       placement?.start();
       if (android) {
+        startDownloads?.call();
         _links = links();
         _links!.start();
         _shares = shares();
         _shares!.start();
       }
       if (windows) {
+        unawaited(windowHotkey?.start());
         _heartbeat = Timer.periodic(const Duration(seconds: 1), (_) {
           if (_disposed) return;
           final done = Completer<void>();
@@ -152,6 +161,8 @@ class InteractiveBindings {
       if (_shares != null) prepare('shares', _shares!.prepareForExit),
       if (placement != null)
         prepare('window placement', placement!.prepareForExit),
+      if (windows && windowHotkey != null)
+        prepare('window hotkey', windowHotkey!.hold),
     ]);
     if (failures.isNotEmpty) {
       try {
@@ -195,6 +206,8 @@ class InteractiveBindings {
       if (_links != null) close('links', _links!.dispose),
       if (_shares != null) close('shares', _shares!.dispose),
       if (placement != null) close('window placement', placement!.dispose),
+      if (windowHotkey != null) close('window hotkey', windowHotkey!.close),
+      if (closeDownloads != null) close('downloads', closeDownloads!),
       // Its timer has stopped. Release the native watchdog after its own calls
       // drain, so a slow file write cannot leave an un-fed watchdog timing out.
       closeWatchdog(),

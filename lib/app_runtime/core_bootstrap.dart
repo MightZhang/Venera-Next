@@ -12,6 +12,7 @@ class CoreBootstrap {
     required this.finish,
     this.shutdownPreparation,
     this.releaseOwnership,
+    this.onStartupFailure,
     Iterable<CoreStartupCleanup> failureCleanup = const [],
   }) : _failureCleanup = failureCleanup;
   final Future<void> Function() environment;
@@ -26,6 +27,8 @@ class CoreBootstrap {
   /// Failed cleanup retains ownership, preventing another process from opening
   /// the directory while an old native writer may still be alive.
   final FutureOr<void> Function()? releaseOwnership;
+  final void Function(String phase, Object error, StackTrace stack)?
+  onStartupFailure;
   final Iterable<CoreStartupCleanup> _failureCleanup;
   Future<void>? _startup;
   Future<void>? _shutdown;
@@ -77,16 +80,28 @@ class CoreBootstrap {
   }
 
   Future<void> _start() async {
+    var phase = 'environment';
     try {
       await environment();
+      phase = 'settings';
       await settings();
+      phase = 'infrastructure';
       await infrastructure();
       // Do not start stores waiting on a source that failed to initialize.
+      phase = 'sources';
       await sources();
+      phase = 'stores';
       await stores();
+      phase = 'finish';
       await finish();
       _startedSuccessfully = true;
     } catch (error, stack) {
+      try {
+        // Report the cause before rollback closes the session's log writer.
+        onStartupFailure?.call(phase, error, stack);
+      } catch (_) {
+        // A diagnostic failure must not replace the cause or prevent rollback.
+      }
       await rollbackCoreStartup(_failureCleanup, error, stack);
       try {
         await releaseOwnership?.call();
@@ -141,11 +156,30 @@ class CoreShutdownFailure implements Exception {
 
 /// Join every attempt before rollback so a late success cannot reopen a store
 /// after it has been closed. Successful startup leaves ownership with the host.
-Future<void> initializeCoreStores(Iterable<CoreStoreStartup> stores) async {
+Future<void> initializeCoreStores(
+  Iterable<CoreStoreStartup> stores, {
+  void Function(Object error, StackTrace stack)? onFailure,
+}) async {
   final attempts = List<CoreStoreStartup>.of(stores);
+  var reported = false;
   try {
     await Future.wait(
-      attempts.map((store) => Future<void>.sync(store.initialize)),
+      attempts.map(
+        (store) => Future<void>.sync(store.initialize).catchError((
+          Object error,
+          StackTrace stack,
+        ) {
+          if (!reported) {
+            reported = true;
+            try {
+              onFailure?.call(error, stack);
+            } catch (_) {
+              // Diagnostics cannot release live resources or replace the cause.
+            }
+          }
+          Error.throwWithStackTrace(error, stack);
+        }),
+      ),
     );
   } catch (error, stack) {
     await rollbackCoreStartup(
