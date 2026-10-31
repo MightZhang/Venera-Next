@@ -31,6 +31,7 @@ English index: [README.en.md](README.en.md)
 
 ## 分发和发布
 
+- [Android TV 安装与分发](distribution/android_tv.zh.md) / [Android TV Distribution](distribution/android_tv.en.md)
 - [Windows 分发](distribution/windows.zh.md) / [Windows Distribution](distribution/windows.en.md)
 - [Linux 安装与分发](distribution/linux.zh.md) / [Linux Installation and Distribution](distribution/linux.en.md)
 
@@ -46,10 +47,12 @@ English index: [README.en.md](README.en.md)
 
 ## 实验和任务跟踪
 
+- [Android TV Alpha 历史实验记录（已进入主线）](experiments/android_tv.zh.md)
 - [漫画源安装任务交互设计](experiments/source_installation_tasks.zh.md)
 - [漫画源与源仓库管理设计](experiments/source_repositories.zh.md)
 - [图片增强实验](experiments/image_enhancement.zh.md)
 - [去混淆像素复制优化](experiments/image_descrambling.zh.md)
+- [WebDAV 阅读卡顿分阶段排查](experiments/webdav_reader_performance.zh.md)
 - [AVIF 格式识别与解码评估](experiments/avif_decoder.zh.md)
 
 ## 维护原则

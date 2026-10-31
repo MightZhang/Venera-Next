@@ -31,6 +31,7 @@ Source developers can follow the [authoring guide](api/comic_source.en.md) → [
 
 ## Distribution
 
+- [Android TV 安装与分发](distribution/android_tv.zh.md) / [Android TV Distribution](distribution/android_tv.en.md)
 - [Windows 分发](distribution/windows.zh.md) / [Windows Distribution](distribution/windows.en.md)
 - [Linux 安装与分发](distribution/linux.zh.md) / [Linux Installation and Distribution](distribution/linux.en.md)
 
@@ -46,10 +47,12 @@ Source developers can follow the [authoring guide](api/comic_source.en.md) → [
 
 ## Experiments
 
+- [Historical Android TV Alpha experiment, now integrated into main (Chinese)](experiments/android_tv.zh.md)
 - [Source installation task design (Chinese)](experiments/source_installation_tasks.zh.md)
 - [Source repository management design (Chinese)](experiments/source_repositories.zh.md)
 - [图片增强实验](experiments/image_enhancement.zh.md)
 - [去混淆像素复制优化](experiments/image_descrambling.zh.md)
+- [WebDAV 阅读卡顿分阶段排查](experiments/webdav_reader_performance.zh.md)
 - [AVIF 格式识别与解码评估](experiments/avif_decoder.zh.md)
 
 ## Maintenance Rules
