@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:venera_next/foundation/operation_failure.dart';
 import 'local_chapter_storage.dart';
 import 'package:venera_next/foundation/global_preference_store.dart';
@@ -388,42 +387,6 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
     });
   }
 
-  
-  Future<void> ensureCover(
-    File oriFile, {
-    String assetPath = 'assets/cover2.jpg',
-  }) async {
-    if (await oriFile.exists()) return;
-
-    // 先保证父目录存在，recursive 才会把缺失的父级一起建出来
-    await oriFile.parent.create(recursive: true);
-
-    try {
-      final byteData = await rootBundle.load(assetPath);
-      await oriFile.writeAsBytes(byteData.buffer.asUint8List(), flush: true);
-    } catch (e, s) {
-      // 常见原因：pubspec 没声明 assets，或路径写错
-      throw StateError('写入默认封面失败: $e\n$s');
-    }
-  }
-  Future<String?> copyCover(String oriPath, String dirPath) async {
-    final oriFile = File(oriPath);
-    if (!await oriFile.exists()){
-       await ensureCover(oriFile);
-    } 
-
-    final dir = Directory(dirPath);
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-
-    final ext = oriFile.extension.isEmpty ? 'jpg' : oriFile.extension;
-    final target = File(FilePath.join(dirPath, 'cover.$ext'));
-    await oriFile.copy(target.path);
-    return target.path;
-  }
-
-
   Future<void> _resume(int generation) async {
     _isError = false;
     _message = "Resuming...".tl;
@@ -480,59 +443,47 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
     if (_cover == null) {
       _message = "Downloading cover...".tl;
       notifyListeners();
-      var coverUrl = comic!.cover;
-      if (coverUrl.startsWith("file://")) {
-        var oriPath = Uri.parse(
-          coverUrl,
-        ).toFilePath(); // 正确解析 file:// URI 为系统路径
-        _cover = await copyCover(oriPath, path!);
-        notifyListeners();
+      var res = await _runDownloadStepWithRetry(generation, () async {
+        Uint8List? data;
+        final thumbnail = StreamIterator(
+          _loadThumbnail(comic!.cover, source.key),
+        );
+        _thumbnail = thumbnail;
+        try {
+          while (await thumbnail.moveNext()) {
+            if (!_isCurrentRun(generation)) return null;
+            final progress = thumbnail.current;
+            if (progress.imageBytes != null) data = progress.imageBytes;
+          }
+        } finally {
+          await thumbnail.cancel();
+          if (identical(_thumbnail, thumbnail)) _thumbnail = null;
+        }
+        // A stream may already have produced bytes when cancellation starts.
+        // Never write those bytes into a canceled or replacement run's path.
+        if (!_isCurrentRun(generation)) return null;
+        if (data == null) {
+          throw OperationFailure.message("Failed to download cover");
+        }
+        var fileType = detectFileType(data);
+        var file = File(FilePath.join(path!, "cover${fileType.ext}"));
+        file.writeAsBytesSync(data);
+        return "file://${file.path}";
+      });
+      if (!_isCurrentRun(generation)) {
+        return;
+      }
+      if (res.error) {
+        Log.error("Download", res.errorMessage!);
+        _setError("Error: ${res.errorMessage}");
+        return;
       } else {
-        var res = await _runDownloadStepWithRetry(generation, () async {
-          Uint8List? data;
-          final thumbnail = StreamIterator(
-            _loadThumbnail(comic!.cover, source.key),
-          );
-          _thumbnail = thumbnail;
-          try {
-            while (await thumbnail.moveNext()) {
-              if (!_isCurrentRun(generation)) return null;
-              final progress = thumbnail.current;
-              if (progress.imageBytes != null) data = progress.imageBytes;
-            }
-          } finally {
-            await thumbnail.cancel();
-            if (identical(_thumbnail, thumbnail)) _thumbnail = null;
-          }
-          // A stream may already have produced bytes when cancellation starts.
-          // Never write those bytes into a canceled or replacement run's path.
-          if (!_isCurrentRun(generation)) return null;
-          if (data == null) {
-            throw OperationFailure.message("Failed to download cover");
-          }
-          var fileType = detectFileType(data);
-          var file = File(FilePath.join(path!, "cover${fileType.ext}"));
-          file.writeAsBytesSync(data);
-          return "file://${file.path}";
-        });
-        if (!_isCurrentRun(generation)) {
-          return;
-        }
-        if (res.error) {
-          Log.error("Download", res.errorMessage!);
-          // _setError("Error: ${res.errorMessage}");
-          // return;
-          String oriPath = File(path!).parent.path+"/cover.jpg";  
-          _cover = await copyCover(oriPath, path!);
-        } else {
-          _cover = res.data;
-          // notifyListeners();
-        }
+        _cover = res.data;
         notifyListeners();
       }
       await _storage.saveCurrentDownloadingTasks();
       if (!_isCurrentRun(generation)) return;
-    } 
+    }
 
     if (_images == null) {
       if (comic!.chapters == null) {
@@ -770,11 +721,9 @@ class ImagesDownloadTask extends DownloadTask with _TransferSpeedMixin {
       id: comic!.id,
       title: title,
       subtitle: comic!.subTitle ?? '',
-      tags: [
-        'Source:${source.name}',   // 新增：漫画源名称作为 tag
-        ...comic!.tags.entries.expand((e) {
+      tags: comic!.tags.entries.expand((e) {
         return e.value.map((v) => "${e.key}:$v");
-      })],
+      }).toList(),
       directory: Directory(path!).name,
       chapters: comic!.chapters,
       cover: File(_cover!.split("file://").last).name,

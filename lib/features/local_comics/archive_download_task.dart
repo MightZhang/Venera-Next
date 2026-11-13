@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:isolate';
 
-import 'package:flutter_saf/flutter_saf.dart';
+import 'package:venera_saf/venera_saf.dart';
 import 'package:venera_next/features/comic_storage/comic_storage.dart';
 import 'package:venera_next/foundation/app.dart';
 import 'package:venera_next/features/comic_source/comic_source_api.dart';
@@ -352,11 +352,9 @@ class ArchiveDownloadTask extends DownloadTask {
       id: comic.id,
       title: title,
       subtitle: comic.subTitle ?? '',
-      tags: [ 
-        'Source:${source.name}',   // 新增：漫画源名称作为 tag
-        ...comic.tags.entries.expand((e) {
-          return e.value.map((v) => "${e.key}:$v");
-      })],
+      tags: comic.tags.entries.expand((e) {
+        return e.value.map((v) => "${e.key}:$v");
+      }).toList(),
       directory: Directory(path!).name,
       chapters: null,
       cover: _findCover(),

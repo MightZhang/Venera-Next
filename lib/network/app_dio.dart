@@ -145,10 +145,9 @@ class MyLogInterceptor extends Interceptor {
           "headers:\n$headers\n"
           "data:\n${options.extra["maskDataInLog"] == true ? dataMask : formatLogBody(options.data)}",
     );
-    const d = Duration(seconds: 25);
-    options.connectTimeout =  d ;
-    options.receiveTimeout =  d ;
-    options.sendTimeout =  d ;
+    options.connectTimeout = const Duration(seconds: 15);
+    options.receiveTimeout = const Duration(seconds: 15);
+    options.sendTimeout = const Duration(seconds: 15);
     handler.next(options);
   }
 }

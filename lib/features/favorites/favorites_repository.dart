@@ -3,6 +3,7 @@ import 'package:sqlite3/sqlite3.dart';
 import 'favorite_models.dart';
 import 'favorite_row.dart';
 import 'favorite_folder.dart';
+import 'favorite_folder_name.dart';
 import 'package:uuid/uuid.dart';
 
 /// Favorite persistence on a caller-owned connection; no cache or notifications.
@@ -208,7 +209,23 @@ class FavoritesRepository {
   });
 
   void renameFolder(String before, String after) => _transaction(() {
-    db.execute('ALTER TABLE ${_table(before)} RENAME TO ${_table(after)};');
+    if (before == after) return;
+    var source = before;
+    if (favoriteFolderNameKey(before) == favoriteFolderNameKey(after)) {
+      // SQLite rejects case-only ALTER TABLE. Both steps share this transaction.
+      String temporary;
+      do {
+        temporary = '_favorite_rename_${const Uuid().v4()}';
+      } while (db.select(
+        'SELECT 1 FROM sqlite_master WHERE name = ? COLLATE NOCASE;',
+        [temporary],
+      ).isNotEmpty);
+      db.execute(
+        'ALTER TABLE ${_table(before)} RENAME TO ${_table(temporary)};',
+      );
+      source = temporary;
+    }
+    db.execute('ALTER TABLE ${_table(source)} RENAME TO ${_table(after)};');
     db.execute(
       'UPDATE folder_order SET folder_name = ? WHERE folder_name = ?;',
       [after, before],
@@ -494,13 +511,28 @@ class FavoritesRepository {
   static String _qualifiedTable(String folder, String? schema) =>
       schema == null ? _table(folder) : '${_table(schema)}.${_table(folder)}';
 
-  List<String> _storedFolderNames() => db
+  List<String> _storedFolderNames({String? schema}) => db
       .select(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT GLOB 'sqlite_*';",
+        "SELECT name FROM ${_qualifiedTable('sqlite_master', schema)} WHERE type='table' AND name NOT GLOB 'sqlite_*';",
       )
       .map((row) => row['name'] as String)
       .where((name) => name != 'folder_sync' && name != 'folder_order')
       .toList();
+
+  /// Read persisted identities, not display metadata or a refreshing UI index.
+  List<String> comicIds(int type, {String? schema}) => [
+    for (final folder in _storedFolderNames(schema: schema))
+      for (final row in db.select(
+        'SELECT id FROM ${_qualifiedTable(folder, schema)} WHERE type = ?;',
+        [type],
+      ))
+        row['id'] as String,
+  ];
+
+  bool containsIdentity(String id, int type, {String? schema}) =>
+      _storedFolderNames(
+        schema: schema,
+      ).any((folder) => comicExists(folder, id, type, schema: schema));
 
   List<String> folderNames() {
     if (_hasHierarchy) {
