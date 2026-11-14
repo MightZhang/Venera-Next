@@ -49,3 +49,7 @@ app.*.map.json
 .opencode/
 .codex/
 .agents/
+
+/packages/**/android/.gradle
+/packages/**/android/build
+/packages/venera_saf/android/.gradle/buildOutputCleanup/*
